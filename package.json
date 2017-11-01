@@ -14,7 +14,9 @@
     "type": "git"
   },
   "dependencies": {
-    "byteballcore": "^0.2.60"
+    "byteballcore": "^0.2.60",
+    "bitcore-lib": "^0.13.14",
+    "bitcore-mnemonic": "~1.0.0"
   },
   "devDependencies": {
   }
