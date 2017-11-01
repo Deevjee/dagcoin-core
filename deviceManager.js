@@ -14,6 +14,13 @@ function DeviceManager() {
     this.messageCounter = 0;
 
     this.eventBus = require('byteballcore/event_bus');
+
+    const self = this;
+
+    this.eventBus.on('dagcoin.request.is-connected', (message, fromAddress) => {
+        self.sendResponse(fromAddress, 'is-connected', {}, message.id);
+    });
+
     this.eventBus.on('text', function (fromAddress, text) {
         console.log(`TEXT MESSAGE FROM ${fromAddress}: ${text}`);
 
@@ -28,7 +35,7 @@ function DeviceManager() {
         if (message !== null) {
             if (message.protocol === 'dagcoin') {
                 console.log(`DAGCOIN MESSAGE RECEIVED FROM ${fromAddress}`);
-                eventBus.emit(`dagcoin.${message.title}`, message, fromAddress);
+                self.eventBus.emit(`dagcoin.${message.title}`, message, fromAddress);
                 return Promise.resolve(true);
             }
 
