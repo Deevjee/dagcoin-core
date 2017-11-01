@@ -1,0 +1,7 @@
+/*jslint node: true */
+"use strict";
+
+// THIS IS A LIST OF PARAMETERS NEEDED IN THE CORE
+
+exports.DAGCOIN_MESSAGE_TIMEOUT = 30 * 1000;
+exports.DB_READY_CHECK_INTERVAL = 10 * 1000;

@@ -1,0 +1,21 @@
+{
+  "name": "dagcoin-core",
+  "description": "Dagcoin Core",
+  "author": "dagcoin",
+  "version": "0.0.1",
+  "keywords": [
+    "dagcoin",
+    "core",
+    "byteball"
+  ],
+  "license": "MIT",
+  "repository": {
+    "url": "git://github.com/dagcoin/dagcoin-core.git",
+    "type": "git"
+  },
+  "dependencies": {
+    "byteballcore": "^0.2.60"
+  },
+  "devDependencies": {
+  }
+}
