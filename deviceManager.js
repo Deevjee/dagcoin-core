@@ -12,6 +12,29 @@ function DeviceManager() {
     this.timedPromises = require('./promiseManager');
 
     this.messageCounter = 0;
+
+    this.eventBus = require('byteballcore/event_bus');
+    this.eventBus.on('text', function (fromAddress, text) {
+        console.log(`TEXT MESSAGE FROM ${fromAddress}: ${text}`);
+
+        let message = null;
+
+        try {
+            message = JSON.parse(text);
+        } catch (err) {
+            console.log(`NEW MESSAGE FROM ${fromAddress}: ${text} NOT A JSON MESSAGE: ${err}`);
+        }
+
+        if (message !== null) {
+            if (message.protocol === 'dagcoin') {
+                console.log(`DAGCOIN MESSAGE RECEIVED FROM ${fromAddress}`);
+                eventBus.emit(`dagcoin.${message.title}`, message, fromAddress);
+                return Promise.resolve(true);
+            }
+
+            console.log(`JSON MESSAGE RECEIVED FROM ${fromAddress} WITH UNEXPECTED PROTOCOL: ${message.protocol}`);
+        }
+    });
 }
 
 /**
