@@ -137,15 +137,15 @@ DeviceManager.prototype.nextMessageId = function () {
 
 DeviceManager.prototype.sendMessage = function (deviceAddress, messageType, subject, messageBody, messageId) {
     if (!deviceAddress) {
-        throw Error('PARAMETER deviceAddress UNSPECIFIED');
+        return Promise.reject(Error('CALLING deviceManager.sendMessage: PARAMETER deviceAddress UNSPECIFIED'));
     }
 
     if (!messageType) {
-        throw Error('PARAMETER messageType UNSPECIFIED');
+        return Promise.reject(Error('CALLING deviceManager.sendMessage: PARAMETER messageType UNSPECIFIED'))
     }
 
     if (!subject) {
-        throw Error('PARAMETER subject UNSPECIFIED');
+        return Promise.reject(Error('CALLING deviceManager.sendMessage: PARAMETER subject UNSPECIFIED'))
     }
 
     const self = this;
