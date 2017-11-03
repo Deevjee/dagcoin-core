@@ -64,18 +64,7 @@ function rejectOnException (method) {
     });
 };
 
-function FailSafePromise (f) {
-    return new Promise((resolve, reject) => {
-        rejectOnException(
-            f,
-            resolve,
-            reject
-        ).catch((e) => reject(e));
-    });
-};
-
 module.exports.logOnFailure = logOnFailure;
 module.exports.logError = logError;
 module.exports.generateError = generateError;
 module.exports.rejectOnException = rejectOnException;
-module.exports.FailSafePromise = FailSafePromise;

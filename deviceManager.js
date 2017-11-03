@@ -2,8 +2,6 @@
 
 let instance = null;
 
-const FailSafePromise = require('./exceptionManager').FailSafePromise;
-
 function DeviceManager() {
     this.device = require('byteballcore/device');
     this.conf = require('byteballcore/conf');
@@ -76,7 +74,7 @@ function DeviceManager() {
 DeviceManager.prototype.makeSureDeviceIsConnected = function (pairingCode) {
     const self = this;
 
-    return this.checkOrPairDevice(pairingCode).then((correspondent) => {
+    return self.checkOrPairDevice(pairingCode).then((correspondent) => {
         console.log(`RECEIVED A CORRESPONDENT: ${JSON.stringify(correspondent)}`);
 
         return self.sendRequestAndListen(correspondent.device_address, 'is-connected', {}).catch((legacy) => {
@@ -108,25 +106,25 @@ DeviceManager.prototype.makeSureDeviceIsConnected = function (pairingCode) {
                 }
             );
 
-            const keepAlive = {
-                protocol: 'dagcoin',
-                title: 'is-connected'
-            };
-
-            return new FailSafePromise((resolve, reject) => {
-                self.device.sendMessageToDevice(
+            return new Promise((resolve, reject) => {
+                self.exceptionManager.rejectOnException(
+                    self.device.sendMessageToDevice,
                     correspondent.device_address,
                     'text',
-                    JSON.stringify(keepAlive),
+                    JSON.stringify({
+                        protocol: 'dagcoin',
+                        title: 'is-connected'
+                    }),
                     {
                         ifOk() {
+                            console.log(`MESSAGE SENT: is-connected`);
                             resolve();
                         },
                         ifError(error) {
                             reject(error);
                         }
                     }
-                );
+                ).catch((e) => {reject(e)});
             }).then(() => {
                 return self.timedPromises.timedPromise(
                     promise,
@@ -157,8 +155,9 @@ DeviceManager.prototype.lookupDeviceByPublicKey = function (pubkey) {
 DeviceManager.prototype.pairDevice = function (pubkey, hub, pairingSecret) {
     const self = this;
 
-    return new FailSafePromise((resolve) => {
-        self.device.addUnconfirmedCorrespondent(
+    return new Promise((resolve, reject) => {
+        self.exceptionManager.rejectOnException(
+            self.device.addUnconfirmedCorrespondent,
             pubkey,
             hub,
             'New',
@@ -166,22 +165,24 @@ DeviceManager.prototype.pairDevice = function (pubkey, hub, pairingSecret) {
                 console.log(`PAIRING WITH ${deviceAddress} ... ADD UNCONFIRMED CORRESPONDENT`);
                 resolve(deviceAddress);
             }
-        );
+        ).catch((e) => {reject(e)});
     }).then((deviceAddress) => {
         console.log(`PAIRING WITH ${deviceAddress} ... ADD UNCONFIRMED CORRESPONDENT WAITING FOR PAIRING`);
-        return new FailSafePromise((resolve) => {
-            self.device.startWaitingForPairing(
+        return new Promise((resolve, reject) => {
+            self.exceptionManager.rejectOnException(
+                self.device.startWaitingForPairing,
                 (reversePairingInfo) => {
                     resolve({
                         deviceAddress,
                         reversePairingInfo
                     });
                 }
-            );
+            ).catch((e) => {reject(e)});
         });
     }).then((params) => {
-        return new FailSafePromise((resolve, reject) => {
-            self.device.sendPairingMessage(
+        return new Promise((resolve, reject) => {
+            self.exceptionManager.rejectOnException(
+                self.device.sendPairingMessage,
                 hub,
                 pubkey,
                 pairingSecret,
@@ -191,12 +192,10 @@ DeviceManager.prototype.pairDevice = function (pubkey, hub, pairingSecret) {
                         resolve(params.deviceAddress);
                     },
                     ifError: (error) => {
-                        const enhancedError = self.exceptionManager.generateError(error);
-                        error.message = `FAILED DELIVERING THE PAIRING MESSAGE: ${error.message}`
-                        reject(enhancedError);
+                        reject(self.exceptionManager.generateError(error));
                     }
                 }
-            );
+            ).catch((e) => {reject(e)});
         });
     }).then((deviceAddress) => {
         console.log(`LOOKING UP CORRESPONDENT WITH DEVICE ADDRESS ${deviceAddress}`);
@@ -207,13 +206,13 @@ DeviceManager.prototype.pairDevice = function (pubkey, hub, pairingSecret) {
 DeviceManager.prototype.getCorrespondent = function (deviceAddress) {
     const self = this;
     console.log(`GETTING CORRESPONDENT FROM DB WITH DEVICE ADDRESS ${deviceAddress}`);
-    return new FailSafePromise((resolve) => {
-        self.device.readCorrespondent(
+
+    return new Promise((resolve, reject) => {
+        self.exceptionManager.rejectOnException(
+            self.device.readCorrespondent,
             deviceAddress,
-            (correspondent) => {
-                resolve(correspondent);
-            }
-        );
+            resolve
+        ).catch((e) => {reject(e)});
     });
 };
 
@@ -265,8 +264,9 @@ DeviceManager.prototype.sendMessage = function (deviceAddress, messageType, subj
         messageBody
     };
 
-    return new FailSafePromise((resolve, reject) => {
-        self.device.sendMessageToDevice(
+    return new Promise((resolve, reject) => {
+        self.exceptionManager.rejectOnException(
+            self.device.sendMessageToDevice,
             deviceAddress,
             'text',
             JSON.stringify(message),
@@ -278,7 +278,7 @@ DeviceManager.prototype.sendMessage = function (deviceAddress, messageType, subj
                     reject(error);
                 }
             }
-        );
+        ).catch((e) => {reject(e)});
     });
 };
 
