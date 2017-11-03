@@ -88,7 +88,7 @@ DeviceManager.prototype.makeSureDeviceIsConnected = function (pairingCode) {
                 listener = function (message, fromAddress) {
                     if (fromAddress === correspondent.device_address) {
                         console.log(`DEVICE WITH ADDRESS ${fromAddress} IS RESPONSIVE`);
-                        resolve(true);
+                        resolve(correspondent.device_address);
                     } else {
                         console.log(`DISCARDED connected message MESSAGE ${fromAddress} != ${correspondent.device_address}`);
                     }
@@ -96,9 +96,9 @@ DeviceManager.prototype.makeSureDeviceIsConnected = function (pairingCode) {
 
                 self.eventBus.on('dagcoin.connected', listener);
             }).then(
-                () => {
+                (deviceAddress) => {
                     self.eventBus.removeListener('dagcoin.connected', listener);
-                    return Promise.resolve();
+                    return Promise.resolve(deviceAddress);
                 },
                 (error) => {
                     self.eventBus.removeListener('dagcoin.connected', listener);
