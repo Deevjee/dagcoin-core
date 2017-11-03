@@ -10,18 +10,28 @@ function ConfManager () {
 }
 
 ConfManager.prototype.write = function(entries) {
-	const self = this;
+    const self = this;
 
-	return new Promise((resolve, reject) => {
-		this.fs.writeFile(self.userConfFile, JSON.stringify(entries, null, '\t'), 'utf8', function(err) {
-			if (err) {
-				reject(`COULD NOT WRITE THE CONF FILE: ${err}`);
-			} else {
-				console.log(`WRITTEN TO CONF (${self.userConfFile}): ${JSON.stringify(entries)}`);
-				resolve();
-			}
-		});
-	});
+    return new Promise((resolve, reject) => {
+        self.fs.writeFile(self.userConfFile, JSON.stringify(entries, null, '\t'), 'utf8', function(err) {
+            if (err) {
+                if (err.code === 'ENOENT') {
+                    resolve(false);
+                } else {
+                    reject(err);
+                }
+            } else {
+                console.log(`WRITTEN TO CONF (${self.userConfFile}): ${JSON.stringify(entries)}`);
+                resolve(true);
+            }
+        });
+    }).then((written) => {
+        if (written) {
+            return Promise.resolve();
+        }
+
+        return self.write(entries);
+    });
 };
 
 module.exports = ConfManager;
