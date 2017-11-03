@@ -2,6 +2,8 @@
 
 let instance = null;
 
+const FailSafePromise = require('./exceptionManager').FailSafePromise;
+
 function DeviceManager() {
     this.device = require('byteballcore/device');
     this.conf = require('byteballcore/conf');
@@ -14,14 +16,38 @@ function DeviceManager() {
     this.messageCounter = 0;
 
     this.eventBus = require('byteballcore/event_bus');
+    this.exceptionManager = require('./exceptionManager');
 
     const self = this;
 
-    this.eventBus.on('dagcoin.request.is-connected', (message, fromAddress) => {
+    // For backward compatibility with older versions
+    self.eventBus.on('dagcoin.is-connected', (message, fromAddress) => {
+        const reply = {
+            protocol: 'dagcoin',
+            title: 'connected'
+        };
+
+        self.exceptionManager.logOnFailure(
+            this.device.sendMessageToDevice,
+            fromAddress,
+            'text',
+            JSON.stringify(reply),
+            {
+                ifOk: () => {
+                    console.log(`REPLIED TO ${fromAddress}, WHO WANTED TO KNOW WHETHER I WERE CONNECTED`);
+                },
+                ifError: (error) => {
+                    self.exceptionManager.logError(error);
+                }
+            }
+        );
+    });
+
+    self.eventBus.on('dagcoin.request.is-connected', (message, fromAddress) => {
         self.sendResponse(fromAddress, 'is-connected', {}, message.id);
     });
 
-    this.eventBus.on('text', function (fromAddress, text) {
+    self.eventBus.on('text', function (fromAddress, text) {
         console.log(`TEXT MESSAGE FROM ${fromAddress}: ${text}`);
 
         let message = null;
@@ -53,7 +79,62 @@ DeviceManager.prototype.makeSureDeviceIsConnected = function (pairingCode) {
     return this.checkOrPairDevice(pairingCode).then((correspondent) => {
         console.log(`RECEIVED A CORRESPONDENT: ${JSON.stringify(correspondent)}`);
 
-        return self.sendRequestAndListen(correspondent.device_address, 'is-connected', {});
+        return self.sendRequestAndListen(correspondent.device_address, 'is-connected', {}).catch((legacy) => {
+            self.exceptionManager.logError(legacy);
+            // THIS REQUEST DOES NOT WORK ON LEGACY NOT SUPPORTING THE request-response MECHANISM
+            /*** === LEGACY STUFF === ***/
+
+            let listener = null;
+
+            const promise = new Promise((resolve) => {
+                listener = function (message, fromAddress) {
+                    if (fromAddress === correspondent.device_address) {
+                        console.log(`DEVICE WITH ADDRESS ${fromAddress} IS RESPONSIVE`);
+                        resolve(true);
+                    } else {
+                        console.log(`DISCARDED connected message MESSAGE ${fromAddress} != ${correspondent.device_address}`);
+                    }
+                };
+
+                self.eventBus.on('dagcoin.connected', listener);
+            }).then(
+                () => {
+                    self.eventBus.removeListener('dagcoin.connected', listener);
+                    return Promise.resolve();
+                },
+                (error) => {
+                    self.eventBus.removeListener('dagcoin.connected', listener);
+                    return Promise.reject(self.exceptionManager.generateError(error));
+                }
+            );
+
+            const keepAlive = {
+                protocol: 'dagcoin',
+                title: 'is-connected'
+            };
+
+            return new FailSafePromise((resolve, reject) => {
+                self.device.sendMessageToDevice(
+                    correspondent.device_address,
+                    'text',
+                    JSON.stringify(keepAlive),
+                    {
+                        ifOk() {
+                            resolve();
+                        },
+                        ifError(error) {
+                            reject(error);
+                        }
+                    }
+                );
+            }).then(() => {
+                return self.timedPromises.timedPromise(
+                    promise,
+                    self.conf.DAGCOIN_MESSAGE_TIMEOUT,
+                    `DEVICE ${correspondent.device_address} DID NOT REPLY TO THE LEGACY CONNECTION TEST`
+                );
+            });
+        });
     });
 };
 
@@ -76,53 +157,46 @@ DeviceManager.prototype.lookupDeviceByPublicKey = function (pubkey) {
 DeviceManager.prototype.pairDevice = function (pubkey, hub, pairingSecret) {
     const self = this;
 
-    return new Promise((resolve, reject) => {
-        try {
-            self.device.addUnconfirmedCorrespondent(pubkey, hub, 'New', (deviceAddress) => {
+    return new FailSafePromise((resolve) => {
+        self.device.addUnconfirmedCorrespondent(
+            pubkey,
+            hub,
+            'New',
+            (deviceAddress) => {
                 console.log(`PAIRING WITH ${deviceAddress} ... ADD UNCONFIRMED CORRESPONDENT`);
                 resolve(deviceAddress);
-            });
-        } catch (e) {
-            reject(new Error(`WHILE CALLING device.addUnconfirmedCorrespondent WITH pubkey=${pubkey} hub=${hub} device_name=New: ${e.message}`));
-        }
+            }
+        );
     }).then((deviceAddress) => {
         console.log(`PAIRING WITH ${deviceAddress} ... ADD UNCONFIRMED CORRESPONDENT WAITING FOR PAIRING`);
-        return new Promise((resolve, reject) => {
-            try {
-                self.device.startWaitingForPairing((reversePairingInfo) => {
+        return new FailSafePromise((resolve) => {
+            self.device.startWaitingForPairing(
+                (reversePairingInfo) => {
                     resolve({
                         deviceAddress,
                         reversePairingInfo
                     });
-                });
-            } catch (e) {
-                reject(new Error(`WHILE CALLING device.startWaitingForPairing WITH device_address=${deviceAddress}: ${e.message}`));
-            }
+                }
+            );
         });
     }).then((params) => {
-        return new Promise((resolve, reject) => {
-            console.log(`PAIRING WITH ${params.deviceAddress} ... SENDING PAIRING MESSAGE`);
-
-            try {
-                self.device.sendPairingMessage(
-                    hub,
-                    pubkey,
-                    pairingSecret,
-                    params.reversePairingInfo.pairing_secret,
-                    {
-                        ifOk: () => {
-                            resolve(params.deviceAddress);
-                        },
-                        ifError: (error) => {
-                            reject(`FAILED DELIVERING THE PAIRING MESSAGE: ${error}`);
-                        }
+        return new FailSafePromise((resolve, reject) => {
+            self.device.sendPairingMessage(
+                hub,
+                pubkey,
+                pairingSecret,
+                params.reversePairingInfo.pairing_secret,
+                {
+                    ifOk: () => {
+                        resolve(params.deviceAddress);
+                    },
+                    ifError: (error) => {
+                        const enhancedError = self.exceptionManager.generateError(error);
+                        error.message = `FAILED DELIVERING THE PAIRING MESSAGE: ${error.message}`
+                        reject(enhancedError);
                     }
-                );
-            } catch(e) {
-                reject(new Error(`WHILE CALLING device.sendPairingMessage WITH 
-                    hub=${hub} pubkey=${pubkey} pairingSecret=${pairingSecret}
-                    reversePairingSecret=${params.reversePairingInfo.pairing_secret}: ${e.message}`));
-            }
+                }
+            );
         });
     }).then((deviceAddress) => {
         console.log(`LOOKING UP CORRESPONDENT WITH DEVICE ADDRESS ${deviceAddress}`);
@@ -133,14 +207,13 @@ DeviceManager.prototype.pairDevice = function (pubkey, hub, pairingSecret) {
 DeviceManager.prototype.getCorrespondent = function (deviceAddress) {
     const self = this;
     console.log(`GETTING CORRESPONDENT FROM DB WITH DEVICE ADDRESS ${deviceAddress}`);
-    return new Promise((resolve, reject) => {
-        try {
-            self.device.readCorrespondent(deviceAddress, (correspondent) => {
+    return new FailSafePromise((resolve) => {
+        self.device.readCorrespondent(
+            deviceAddress,
+            (correspondent) => {
                 resolve(correspondent);
-            });
-        } catch(e) {
-            reject(new Error(`WHILE CALLING device.readCorrespondent WITH deviceAddress=${deviceAddress}: ${e.message}`));
-        }
+            }
+        );
     });
 };
 
@@ -184,27 +257,28 @@ DeviceManager.prototype.sendMessage = function (deviceAddress, messageType, subj
         messageId = this.nextMessageId();
     }
 
-    return new Promise((resolve, reject) => {
-        const message = {
-            protocol: 'dagcoin',
-            title: `${messageType}.${subject}`,
-            id: messageId,
-            messageType,
-            messageBody
-        };
-        try {
-            self.device.sendMessageToDevice(deviceAddress, 'text', JSON.stringify(message), {
+    const message = {
+        protocol: 'dagcoin',
+        title: `${messageType}.${subject}`,
+        id: messageId,
+        messageType,
+        messageBody
+    };
+
+    return new FailSafePromise((resolve, reject) => {
+        self.device.sendMessageToDevice(
+            deviceAddress,
+            'text',
+            JSON.stringify(message),
+            {
                 ifOk() {
                     resolve(message.id);
                 },
                 ifError(error) {
                     reject(error);
                 }
-            });
-        } catch(e) {
-            reject(new Error(`WHILE CALLING device.sendMessageToDevice WITH 
-            deviceAddress=${deviceAddress} subject=text body=${JSON.stringify(message)}: ${e.message}`));
-        }
+            }
+        );
     });
 };
 
@@ -227,7 +301,7 @@ DeviceManager.prototype.sendRequestAndListen = function (deviceAddress, subject,
         `dagcoin.response.${subject}`,
         messageId,
         deviceAddress,
-        `TIMEOUT WAITING FOR RESPONSE TO MESSAGE ${messageId} FROM ${deviceAddress} FOR ${JSON.stringify(messageBody)}`,
+        self.conf.DAGCOIN_MESSAGE_TIMEOUT,
         `DID NOT RECEIVE A REPLY TO MESSAGE ${messageId} FROM ${deviceAddress} FOR ${JSON.stringify(messageBody)}`
     );
 
