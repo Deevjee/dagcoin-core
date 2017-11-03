@@ -2,7 +2,7 @@
   "name": "dagcoin-core",
   "description": "Dagcoin Core",
   "author": "dagcoin",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "keywords": [
     "dagcoin",
     "core",
@@ -14,7 +14,7 @@
     "type": "git"
   },
   "dependencies": {
-    "byteballcore": "^0.2.60",
+    "byteballcore": "^0.2.54",
     "bitcore-lib": "^0.13.14",
     "bitcore-mnemonic": "~1.0.0"
   },
