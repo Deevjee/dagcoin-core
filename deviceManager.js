@@ -77,62 +77,67 @@ DeviceManager.prototype.makeSureDeviceIsConnected = function (pairingCode) {
     return self.checkOrPairDevice(pairingCode).then((correspondent) => {
         console.log(`RECEIVED A CORRESPONDENT: ${JSON.stringify(correspondent)}`);
 
-        return self.sendRequestAndListen(correspondent.device_address, 'is-connected', {}).catch((legacy) => {
-            self.exceptionManager.logError(legacy);
-            // THIS REQUEST DOES NOT WORK ON LEGACY NOT SUPPORTING THE request-response MECHANISM
-            /*** === LEGACY STUFF === ***/
+        return self.sendRequestAndListen(correspondent.device_address, 'is-connected', {}).then(
+            () => {
+                return Promise.resolve(correspondent.device_address);
+            },
+            (legacy) => {
+                self.exceptionManager.logError(legacy);
+                // THIS REQUEST DOES NOT WORK ON LEGACY NOT SUPPORTING THE request-response MECHANISM
+                /*** === LEGACY STUFF === ***/
 
-            let listener = null;
+                let listener = null;
 
-            const promise = new Promise((resolve) => {
-                listener = function (message, fromAddress) {
-                    if (fromAddress === correspondent.device_address) {
-                        console.log(`DEVICE WITH ADDRESS ${fromAddress} IS RESPONSIVE`);
-                        resolve(correspondent.device_address);
-                    } else {
-                        console.log(`DISCARDED connected message MESSAGE ${fromAddress} != ${correspondent.device_address}`);
-                    }
-                };
-
-                self.eventBus.on('dagcoin.connected', listener);
-            }).then(
-                (deviceAddress) => {
-                    self.eventBus.removeListener('dagcoin.connected', listener);
-                    return Promise.resolve(deviceAddress);
-                },
-                (error) => {
-                    self.eventBus.removeListener('dagcoin.connected', listener);
-                    return Promise.reject(self.exceptionManager.generateError(error));
-                }
-            );
-
-            return new Promise((resolve, reject) => {
-                self.exceptionManager.rejectOnException(
-                    self.device.sendMessageToDevice,
-                    correspondent.device_address,
-                    'text',
-                    JSON.stringify({
-                        protocol: 'dagcoin',
-                        title: 'is-connected'
-                    }),
-                    {
-                        ifOk() {
-                            console.log(`MESSAGE SENT: is-connected`);
-                            resolve();
-                        },
-                        ifError(error) {
-                            reject(error);
+                const promise = new Promise((resolve) => {
+                    listener = function (message, fromAddress) {
+                        if (fromAddress === correspondent.device_address) {
+                            console.log(`DEVICE WITH ADDRESS ${fromAddress} IS RESPONSIVE`);
+                            resolve(correspondent.device_address);
+                        } else {
+                            console.log(`DISCARDED connected message MESSAGE ${fromAddress} != ${correspondent.device_address}`);
                         }
+                    };
+
+                    self.eventBus.on('dagcoin.connected', listener);
+                }).then(
+                    (deviceAddress) => {
+                        self.eventBus.removeListener('dagcoin.connected', listener);
+                        return Promise.resolve(deviceAddress);
+                    },
+                    (error) => {
+                        self.eventBus.removeListener('dagcoin.connected', listener);
+                        return Promise.reject(self.exceptionManager.generateError(error));
                     }
-                ).catch((e) => {reject(e)});
-            }).then(() => {
-                return self.timedPromises.timedPromise(
-                    promise,
-                    self.conf.DAGCOIN_MESSAGE_TIMEOUT,
-                    `DEVICE ${correspondent.device_address} DID NOT REPLY TO THE LEGACY CONNECTION TEST`
                 );
-            });
-        });
+
+                return new Promise((resolve, reject) => {
+                    self.exceptionManager.rejectOnException(
+                        self.device.sendMessageToDevice,
+                        correspondent.device_address,
+                        'text',
+                        JSON.stringify({
+                            protocol: 'dagcoin',
+                            title: 'is-connected'
+                        }),
+                        {
+                            ifOk() {
+                                console.log(`MESSAGE SENT: is-connected`);
+                                resolve();
+                            },
+                            ifError(error) {
+                                reject(error);
+                            }
+                        }
+                    ).catch((e) => {reject(e)});
+                }).then(() => {
+                    return self.timedPromises.timedPromise(
+                        promise,
+                        self.conf.DAGCOIN_MESSAGE_TIMEOUT,
+                        `DEVICE ${correspondent.device_address} DID NOT REPLY TO THE LEGACY CONNECTION TEST`
+                    );
+                });
+            }
+        );
     });
 };
 
@@ -271,6 +276,9 @@ DeviceManager.prototype.sendMessage = function (deviceAddress, messageType, subj
             'text',
             JSON.stringify(message),
             {
+                onSaved: function () {
+                    console.log(`A MESSAGE WAS SAVED INTO THE DATABASE: ${JSON.stringify(message)}`);
+                },
                 ifOk() {
                     resolve(message.id);
                 },
