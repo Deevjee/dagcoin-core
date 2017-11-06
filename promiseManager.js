@@ -125,8 +125,8 @@ exports.listeningTimedPromise = function (event, messageId, deviceAddress, timeo
     const uniqueInternalEvent = `internal.dagcoin.${this.nextId()}`;
 
     const listener = function () {
-        const message = arguments[0];
-        const fromAddress = arguments[1];
+        const fromAddress = arguments[0];
+        const message = arguments[1];
 
         // emit parameters:
         // 1. internal event name
