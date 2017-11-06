@@ -59,7 +59,7 @@ function DeviceManager() {
         if (message !== null) {
             if (message.protocol === 'dagcoin') {
                 console.log(`DAGCOIN MESSAGE RECEIVED FROM ${fromAddress}`);
-                self.eventBus.emit(`dagcoin.${message.title}`, message, fromAddress);
+                self.eventBus.emit(`dagcoin.${message.title}`, fromAddress, message);
                 return Promise.resolve(true);
             }
 
