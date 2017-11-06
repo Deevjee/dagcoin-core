@@ -19,7 +19,7 @@ function DeviceManager() {
     const self = this;
 
     // For backward compatibility with older versions
-    self.eventBus.on('dagcoin.is-connected', (message, fromAddress) => {
+    self.eventBus.on('dagcoin.is-connected', (fromAddress, message) => {
         const reply = {
             protocol: 'dagcoin',
             title: 'connected'
@@ -41,7 +41,7 @@ function DeviceManager() {
         );
     });
 
-    self.eventBus.on('dagcoin.request.is-connected', (message, fromAddress) => {
+    self.eventBus.on('dagcoin.request.is-connected', (fromAddress, message) => {
         self.sendResponse(fromAddress, 'is-connected', {}, message.id);
     });
 
