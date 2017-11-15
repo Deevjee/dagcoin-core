@@ -24,18 +24,20 @@ FileSystemManager.prototype.isCordova = function () {
 };
 
 FileSystemManager.prototype.initCordova = function () {
-    if (!this.isCordova()) {
+    const self = this;
+
+    if (!self.isCordova()) {
         throw new Error('FileSystemManager.initCordova() IS ALLOWED IN CORDOVA ONLY');
     }
 
-    if (this.initialized) {
+    if (self.initialized) {
         return Promise.resolve();
     }
 
     return new Promise((resolve, reject) => {
         function onFileSystemSuccess(fileSystem) {
             console.log('File system started: ', fileSystem.name, fileSystem.root.name);
-            this.initialized = true;
+            self.initialized = true;
             resolve();
         }
 
