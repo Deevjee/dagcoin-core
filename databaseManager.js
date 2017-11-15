@@ -72,16 +72,12 @@ DatabaseManager.prototype.checkOrUpdateDatabase = function () {
     });
 };
 
-DatabaseManager.prototype.getDatabaseDirPath = function () {
-    return this.fileSystemManager.getAppDataDir();
-};
-
 DatabaseManager.prototype.getDatabaseFileName = function () {
     return this.conf.database.filename || (this.conf.bLight ? 'byteball-light.sqlite' : 'byteball.sqlite');
 };
 
 DatabaseManager.prototype.getFullDatabasePath = function () {
-    return `${this.getDatabaseDirPath()}/${this.getDatabaseFileName()}`
+    return `${this.fileSystemManager.getDatabaseDirPath()}/${this.getDatabaseFileName()}`
 };
 
 /**
