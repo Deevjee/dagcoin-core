@@ -58,3 +58,5 @@ typings/
 
 # locally generated files
 .idea/
+
+start.js
