@@ -2,7 +2,7 @@
   "name": "dagcoin-core",
   "description": "Dagcoin Core",
   "author": "dagcoin",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "keywords": [
     "dagcoin",
     "core",
@@ -14,9 +14,12 @@
     "type": "git"
   },
   "dependencies": {
-    "byteballcore": "^0.2.54",
     "bitcore-lib": "^0.13.14",
-    "bitcore-mnemonic": "~1.0.0"
+    "bitcore-mnemonic": "~1.0.0",
+    "byteballcore": "^0.2.54",
+    "db-migrate": "^0.10.0-beta.24",
+    "db-migrate-sqlite3": "^0.2.1",
+    "raven": "^2.2.1"
   },
   "devDependencies": {
   }

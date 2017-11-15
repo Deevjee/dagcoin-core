@@ -1,6 +1,7 @@
 'use strict';
 
 let instance = null;
+const Raven = require('raven');
 
 // My module
 function DatabaseManager() {
@@ -18,12 +19,69 @@ function DatabaseManager() {
                     self.db.query(query, parameters, resolve);
                 } catch (e) {
                     console.error(e, e.stack);
+                    Raven.captureException(e);
                     reject(`QUERY ${query} WITH PARAMETER ${JSON.stringify(parameters)} FAILED: ${e.message}`);
                 }
             });
         }
     );
 }
+
+DatabaseManager.prototype.checkOrUpdateDatabase = function () {
+    const self = this;
+
+    const databaseConfigFileName = `database.json`;
+
+    console.log(`CHECKING OR UPDATING DATABASE STATUS. FIRST CHECK: ${databaseConfigFileName}`);
+
+    return self.onReady().then(() => {
+        return self.fileSystemManager.readFile(databaseConfigFileName).then(
+            (data) => {
+                //FILE EXISTS
+                console.log(`FILE ${databaseConfigFileName} EXISTS`);
+                return Promise.resolve();
+            },
+            (error) => {
+                //FILE DOES NOT EXIST
+                console.log(`ERROR READING DATABASE CONFIGURATION FILE NAME (${databaseConfigFileName}). PROBABLY IT DOESN'T EXIST: ${error}`);
+                const databaseAccessConfiguration = `{
+    "${self.conf.environment}": {
+        "driver": "sqlite3",
+        "filename": "${self.getFullDatabasePath()}"
+    }
+}`;
+
+                return self.fileSystemManager.writeFile(
+                    databaseConfigFileName,
+                    databaseAccessConfiguration,
+                    self.fileSystemManager.getDefaultEncoding()
+                );
+            }
+        ).then(() => {
+            const dbMigrate = require('db-migrate').getInstance(true, {env: self.conf.environment});
+            return dbMigrate.up().then(() => {
+                // return dbMigrate.up().then(() => {console.log('MIGRATED');});
+                console.log('MIGRATED');
+            });
+        }).catch((error) => {
+            console.log(`FAILED CHECKING/UPDATING THE DATABASE: ${error}`);
+            console.log(`STRINGIFIED ERROR: ${JSON.stringify(error)}`);
+            process.exit();
+        });
+    });
+};
+
+DatabaseManager.prototype.getDatabaseDirPath = function () {
+    return this.fileSystemManager.getAppDataDir();
+};
+
+DatabaseManager.prototype.getDatabaseFileName = function () {
+    return this.conf.database.filename || (this.conf.bLight ? 'byteball-light.sqlite' : 'byteball.sqlite');
+};
+
+DatabaseManager.prototype.getFullDatabasePath = function () {
+    return `${this.getDatabaseDirPath()}/${this.getDatabaseFileName()}`
+};
 
 /**
  * Makes sure the database is ready.
