@@ -8,6 +8,7 @@ function DatabaseManager() {
     this.db = require('byteballcore/db');
     this.conf = require('byteballcore/conf');
     this.timedPromises = require('./promiseManager');
+    this.fileSystemManager = require('./fileSystemManager').getInstance();
 
     const self = this;
 
