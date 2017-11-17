@@ -6,9 +6,12 @@ const Raven = require('raven');
 // My module
 function DatabaseManager() {
     this.db = require('byteballcore/db');
-    this.conf = require('byteballcore/conf');
+    this.conf = require('byteballcore/conf')
+    this.confManager = require('./confManager').getInstance();
     this.timedPromises = require('./promiseManager');
     this.fileSystemManager = require('./fileSystemManager').getInstance();
+    this.osManager = require('./operatingSystemManager').getInstance();
+    this.exceptionManager = require('./exceptionManager');
 
     const self = this;
 
@@ -36,39 +39,32 @@ DatabaseManager.prototype.checkOrUpdateDatabase = function () {
     console.log(`CHECKING OR UPDATING DATABASE STATUS. FIRST CHECK: ${databaseConfigFileName}`);
 
     return self.onReady().then(() => {
-        return self.fileSystemManager.readFile(databaseConfigFileName).then(
-            (data) => {
-                //FILE EXISTS
-                console.log(`FILE ${databaseConfigFileName} EXISTS`);
-                return Promise.resolve();
-            },
-            (error) => {
-                //FILE DOES NOT EXIST
-                console.log(`ERROR READING DATABASE CONFIGURATION FILE NAME (${databaseConfigFileName}). PROBABLY IT DOESN'T EXIST: ${error}`);
-                const databaseAccessConfiguration = `{
-    "${self.conf.environment}": {
-        "driver": "sqlite3",
-        "filename": "${self.getFullDatabasePath()}"
-    }
-}`;
-
-                return self.fileSystemManager.writeFile(
-                    databaseConfigFileName,
-                    databaseAccessConfiguration,
-                    self.fileSystemManager.getDefaultEncoding()
-                );
+        return self.confManager.get('environment');
+    }).then((environment) => {
+        const options = {
+            env: environment,
+            config: {
+                [environment] : {
+                    driver: "sqlite3",
+                    filename: self.getFullDatabasePath()
+                }
             }
-        ).then(() => {
-            const dbMigrate = require('db-migrate').getInstance(true, {env: self.conf.environment});
-            return dbMigrate.up().then(() => {
-                // return dbMigrate.up().then(() => {console.log('MIGRATED');});
-                console.log('MIGRATED');
-            });
-        }).catch((error) => {
-            console.log(`FAILED CHECKING/UPDATING THE DATABASE: ${error}`);
-            console.log(`STRINGIFIED ERROR: ${JSON.stringify(error)}`);
-            process.exit();
+        };
+
+        console.log('REQUIRING db-migrate');
+        const dbMigrate = require('db-migrate').getInstance(self.osManager.isNode(), options);
+
+        console.log('PREPARING TO MIGRATE');
+
+        return dbMigrate.up().then(() => {
+            console.log('MIGRATED');
         });
+    }).catch((error) => {
+        console.log(`FAILED CHECKING/UPDATING THE DATABASE: ${error}`);
+        console.log(`STRINGIFIED ERROR: ${JSON.stringify(error)}`);
+        self.exceptionManager.logError(error, 'checkOrUpdateDatabase');
+
+        self.osManager.shutDown();
     });
 };
 
