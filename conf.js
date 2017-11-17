@@ -6,7 +6,7 @@
 exports.deviceName = 'Dagcoin Core';
 exports.hub = 'testnetexplorer.dagcoin.org/wss/';
 exports.hub.bLight = true;
-exports.permanent_pairing_secret = '0000'
+exports.permanent_pairing_secret = '0000';
 exports.CONSOLIDATION_INTERVAL = 60 * 60 * 1000;
 
 exports.DAGCOIN_MESSAGE_TIMEOUT = 30 * 1000;

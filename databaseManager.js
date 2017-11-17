@@ -34,37 +34,23 @@ function DatabaseManager() {
 DatabaseManager.prototype.checkOrUpdateDatabase = function () {
     const self = this;
 
-    const databaseConfigFileName = `database.json`;
-
-    console.log(`CHECKING OR UPDATING DATABASE STATUS. FIRST CHECK: ${databaseConfigFileName}`);
-
     return self.onReady().then(() => {
         return self.confManager.get('environment');
     }).then((environment) => {
-        const options = {
-            env: environment,
-            config: {
-                [environment] : {
-                    driver: "sqlite3",
-                    filename: self.getFullDatabasePath()
-                }
-            }
-        };
+        let dbMigrateEngine = null;
 
-        console.log('REQUIRING db-migrate');
-        const dbMigrate = require('db-migrate').getInstance(self.osManager.isNode(), options);
+        if (self.osManager.isNode()) {
+            dbMigrateEngine = require('./migrating/dbMigrate');
+        } else {
+            dbMigrateEngine = require('./migrating/nativeQueries');
+        }
 
-        console.log('PREPARING TO MIGRATE');
+        if (dbMigrateEngine == null) {
+            console.log('NO MIGRATING ENGINE AVAILABLE. NOT MIGRATING THE DATABASE');
+            return Promise.resolve();
+        }
 
-        return dbMigrate.up().then(() => {
-            console.log('MIGRATED');
-        });
-    }).catch((error) => {
-        console.log(`FAILED CHECKING/UPDATING THE DATABASE: ${error}`);
-        console.log(`STRINGIFIED ERROR: ${JSON.stringify(error)}`);
-        self.exceptionManager.logError(error, 'checkOrUpdateDatabase');
-
-        self.osManager.shutDown();
+        return dbMigrateEngine.migrate(environment, self.getFullDatabasePath());
     });
 };
 
