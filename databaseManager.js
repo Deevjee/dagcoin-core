@@ -33,13 +33,17 @@ function DatabaseManager() {
 
 DatabaseManager.prototype.checkOrUpdateDatabase = function () {
     const self = this;
+    let environment = null;
 
     return self.onReady().then(() => {
         return self.confManager.get('environment');
-    }).then((environment) => {
+    }).then((environmentConfig) => {
+        environment = environmentConfig;
+        return self.confManager.get('DATABASE_MIGRATION_TOOL');
+    }).then((migrationEngine) => {
         let dbMigrateEngine = null;
 
-        switch (self.conf.DATABASE_MIGRATION_TOOL) {
+        switch (migrationEngine) {
             case 'native-queries':
                 dbMigrateEngine = require('./migrating/nativeQueries');
                 console.log('DATABASE MIGRATION ENGINE SET TO native-queries');
@@ -55,7 +59,7 @@ DatabaseManager.prototype.checkOrUpdateDatabase = function () {
 
                 break;
             default:
-                console.log('PROPERTY conf.DATABASE_MIGRATION_TOOL NOT SET: NOT MIGRATING THE DATABASE.');
+                console.log('PROPERTY DATABASE_MIGRATION_TOOL NOT SET: NOT MIGRATING THE DATABASE.');
                 return Promise.resolve();
         }
 
