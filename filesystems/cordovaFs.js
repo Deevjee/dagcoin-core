@@ -3,7 +3,9 @@
 let instance = null;
 
 // My module
-function CordovaFs () {}
+function CordovaFs () {
+    this.exceptionManager = require('../exceptionManager');
+}
 
 CordovaFs.prototype.initCordova = function () {
     const self = this;
@@ -93,7 +95,8 @@ CordovaFs.prototype.readFile = function (path) {
                     );
                 },
                 (e) => {
-                    reject(new Error(`error: ${JSON.stringify(e)}`));
+                    self.exceptionManager.logError(new Error(`error: ${JSON.stringify(e)}`));
+                    reject(e);
                 }
             );
         });
