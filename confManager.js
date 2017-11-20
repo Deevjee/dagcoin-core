@@ -36,6 +36,8 @@ ConfManager.prototype.getEnvironment = function (key) {
 };
 
 ConfManager.prototype.get = function (key) {
+    const self = this;
+
     console.log(`LOOKING INTO THE conf.js CONFIGURATION FOR ${key}`);
 
     let value = this.conf[key];
