@@ -106,7 +106,7 @@ module.exports.migrate = function (environment, databaseFile) {
         console.log(`COULD ACCESS dagcoin_migrations. CURRENT MIGRATION VERSION : ${versionReadInDb}`);
         currentVersion = versionReadInDb;
         console.log('READING MIGRATION FILE ...');
-        return fsManager.readFile(`${fsManager.getAppDataDir()}/migrations.json`);
+        return fsManager.readFile(`${fsManager.getAppDataDir()}/migrations/migrations.json`);
     }).then(
         (data) => {
             console.log(`FILE migrations.json READ: ${data}`);
