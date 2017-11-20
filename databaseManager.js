@@ -39,14 +39,28 @@ DatabaseManager.prototype.checkOrUpdateDatabase = function () {
     }).then((environment) => {
         let dbMigrateEngine = null;
 
-        if (self.osManager.isNode()) {
-            dbMigrateEngine = require('./migrating/dbMigrate');
-        } else {
-            dbMigrateEngine = require('./migrating/nativeQueries');
+        switch (self.conf.DATABASE_MIGRATION_TOOL) {
+            case 'native-queries':
+                dbMigrateEngine = require('./migrating/nativeQueries');
+                console.log('DATABASE MIGRATION ENGINE SET TO native-queries');
+                break;
+            case 'db-migrate':
+                if (self.osManager.isCordova()) {
+                    return Promise.reject(new Error('NPM MODULE db-migrate IS NOT SUPPORTED IN CORDOVA'));
+                }
+
+                dbMigrateEngine = require('./migrating/dbMigrate');
+
+                console.log('DATABASE MIGRATION ENGINE SET TO db-migrate');
+
+                break;
+            default:
+                console.log('PROPERTY conf.DATABASE_MIGRATION_TOOL NOT SET: NOT MIGRATING THE DATABASE.');
+                return Promise.resolve();
         }
 
         if (dbMigrateEngine == null) {
-            console.log('NO MIGRATING ENGINE AVAILABLE. NOT MIGRATING THE DATABASE');
+            console.log('NO MIGRATING ENGINE AVAILABLE. NOT MIGRATING THE DATABASE.');
             return Promise.resolve();
         }
 

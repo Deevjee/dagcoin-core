@@ -16,3 +16,5 @@ exports.MIN_PAYMENT_DELAY = 5 * 1000;
 exports.MIN_STABLE_BYTES_ON_MAIN_BEFORE_FUNDING = 5000;
 exports.MAIN_ADDRESS_FUNDS_INSPECTION_PERIOD = 30 * 1000;
 exports.KEYS_FILENAME = "keys.json";
+
+exports.DATABASE_MIGRATION_TOOL = "native-queries"; // CAN BE native-queries OR db-migrate

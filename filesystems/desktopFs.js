@@ -28,7 +28,7 @@ DesktopFs.prototype.readFile = function (path) {
     const self = this;
 
     return new Promise((resolve, reject) => {
-        self.fs.readFile(path, (err, data) => {
+        self.fs.readFile(path, self.getDefaultEncoding(), (err, data) => {
             if (err) {
                 reject(err);
             } else {
@@ -81,7 +81,7 @@ DesktopFs.prototype.readdir = function (path) {
 };
 
 DesktopFs.prototype.getAppDataDir = function() {
-    return this.desktopApp.getAppDataDir();
+    return '.';
 };
 
 module.exports.DesktopFs = DesktopFs;

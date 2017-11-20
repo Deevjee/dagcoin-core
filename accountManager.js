@@ -304,9 +304,9 @@ AccountManager.prototype.checkBytesForAddress = function (address) {
         assocBalances[asset]['total'] += row.balance;
     }
 
-    return assocBalances['base'].total;
+    return Promise.resolve(assocBalances['base'].total);
   });
-}
+};
 
 AccountManager.prototype.checkThereAreStableBytes = function (fromAddress) {
     const self = this;
