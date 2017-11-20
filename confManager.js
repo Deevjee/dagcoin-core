@@ -8,6 +8,7 @@ function ConfManager () {
 	this.fs = require('fs');
     this.osManager = require('./operatingSystemManager').getInstance();
     this.fileSystemManager = require('./fileSystemManager').getInstance();
+    this.exManager = require('./exceptionManager');
 
     if (!this.osManager.isCordova()) {
         try {
