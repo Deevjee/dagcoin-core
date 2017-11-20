@@ -35,18 +35,26 @@ ConfManager.prototype.getEnvironment = function (key) {
 };
 
 ConfManager.prototype.get = function (key) {
+    console.log(`LOOKING INTO THE conf.js CONFIGURATION FOR ${key}`);
+
     let value = this.conf[key];
 
     if (value != null) {
         return Promise.resolve(value);
     }
 
+    console.log(`KEY NOT FOUND INTO THE conf.js CONFIGURATION FOR ${key}`);
+
     return new Promise((resolve, reject) => {
+        console.log(`LOOKING INTO THE ANGULAR CONFIGURATION FOR ${key}`);
         try {
             angular.injector(['config']).invoke(function(ENV) {
+                console.log(`CONFIGURATION VALUE FOR ${key} FOUND: ${ENV[key]}`);
                 resolve(ENV[key]);
             });
         } catch (e) {
+            console.log(`CONFIGURATION VALUE FOR ${key} COULD NOT BE RETRIEVED`);
+            self.exManager.logError(e);
             reject(e);
         }
     });
