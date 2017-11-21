@@ -9,6 +9,7 @@ function ConfManager () {
     this.osManager = require('./operatingSystemManager').getInstance();
     this.fileSystemManager = require('./fileSystemManager').getInstance();
     this.exManager = require('./exceptionManager');
+    this.alterativeConfigSources = [];
 
     if (!this.osManager.isCordova()) {
         try {
@@ -23,15 +24,52 @@ function ConfManager () {
     }
 }
 
-ConfManager.prototype.getEnvironment = function (key) {
-    let environment = this.conf.environment;
-
-    if (environment != null) {
-        return Promise.resolve(environment);
+ConfManager.prototype.addConfigSource = function (source) {
+    if (source == null) {
+        return Promise.reject(new Error('PARAMETER source IS NOT DEFINED'));
     }
 
-    angular.injector(['config']).invoke(function(ENV) {
-        return Promise.resolve(ENV.environment);
+    if (source.name == null) {
+        return Promise.reject(new Error('PARAMETER source.name IS NOT DEFINED'));
+    }
+
+    if (typeof source.get != 'function') {
+        return Promise.reject(new Error(`METHOD source.get IS NOT A FUNCTION: ${typeof source.get}`));
+    }
+
+    this.alterativeConfigSources.push(source);
+
+    return Promise.resolve();
+};
+
+ConfManager.prototype.searchSources = function (key, sourceIndex) {
+    const self = this;
+
+    if (key == null) {
+        return Promise.reject(new Error('PARAMETER key IS UNDEFINED'));
+    }
+
+    if (sourceIndex == null) {
+        return Promise.reject(new Error(`PARAMETER sourceIndex IS UNDEFINED WHILE LOOKING FOR KEY ${key}`));
+    }
+
+    if (sourceIndex >= self.alterativeConfigSources.length) {
+        console.log(`ALL ALTERNATIVE SOURCES EXPLORED. COULD NOT FIND ${key} ANYWHERE IN THOSE.`);
+        return Promise.resolve(null);
+    }
+
+    const source = self.alterativeConfigSources[sourceIndex];
+
+    console.log(`LOOKING FOR ${key} INTO SOURCE ${source.name}`);
+
+    return source.get(key).then((value) => {
+        if (value == null) {
+            console.log(`KEY ${key} NOT FOUND INTO SOURCE ${source.name}: MOVING ON TO NEXT SOURCE`);
+            return self.searchSources(key, sourceIndex + 1);
+        } else {
+            console.log(`KEY ${key} FOUND INTO SOURCE ${source.name}: ${value}`);
+            return Promise.resolve(value);
+        }
     });
 };
 
@@ -46,20 +84,38 @@ ConfManager.prototype.get = function (key) {
         return Promise.resolve(value);
     }
 
-    console.log(`KEY NOT FOUND INTO THE conf.js CONFIGURATION FOR ${key}`);
+    console.log(`CONFIGURATION NOT FOUND INTO THE conf.js FOR ${key}. LOOKING INTO ALTERNATIVE SOURCES`);
 
-    return new Promise((resolve, reject) => {
-        console.log(`LOOKING INTO THE ANGULAR CONFIGURATION FOR ${key}`);
-        try {
-            angular.injector(['config']).invoke(function(ENV) {
-                console.log(`CONFIGURATION VALUE FOR ${key} FOUND: ${ENV[key]}`);
-                resolve(ENV[key]);
-            });
-        } catch (e) {
-            console.log(`CONFIGURATION VALUE FOR ${key} COULD NOT BE RETRIEVED`);
-            self.exManager.logError(e);
-            reject(e);
+    return self.searchSources(key, 0).then((value) => {
+        if (value != null) {
+            return Promise.resolve(value);
         }
+
+        console.log(`CONFIGURATION NOT FOUND INTO THE ALTERNATIVE SOURCES FOR ${key}. LOOKING INTO ANGULAR`);
+
+        return new Promise((resolve, reject) => {
+            if (self.osManager.isNode()) {
+                console.log('ANGULAR IS NOT DEFINED. MAYBE YOU CALLED IT TOO EARLY?');
+                return Promise.resolve(null);
+            }
+
+            if (angular == null) {
+                console.log('RUNNIG: UNDER NODE: ANGULAR HERE IS NOT ALLOWED AS CONFIGURATION SOURCE');
+                return Promise.resolve(null);
+            }
+
+            console.log(`LOOKING INTO THE ANGULAR CONFIGURATION FOR ${key}`);
+            try {
+                angular.injector(['config']).invoke(function(ENV) {
+                    console.log(`CONFIGURATION VALUE FOR ${key} FOUND: ${ENV[key]}`);
+                    resolve(ENV[key]);
+                });
+            } catch (e) {
+                console.log(`CONFIGURATION VALUE FOR ${key} COULD NOT BE RETRIEVED`);
+                self.exManager.logError(e);
+                reject(e);
+            }
+        });
     });
 };
 

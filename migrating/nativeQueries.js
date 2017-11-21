@@ -69,20 +69,9 @@ function applyMigrations(migrations, currentVersion) {
 
     const nextMigration = migrations.pop();
 
-    return dbManager.query('BEGIN TRANSACTION', []).then(() => {
-        return applyMigration(nextMigration, currentVersion).then(() => {
-            return applyMigrations(migrations, currentVersion);
-        });
-    }).then(
-        () => {
-            return dbManager.query('COMMIT TRANSACTION', []);
-        },
-        (err) => {
-            console.log('COULD NOT APPLY ALL MIGRATIONS, ROLLING BACK');
-            exManager.logError(err);
-            return dbManager.query('ROLLBACK TRANSACTION', []);
-        }
-    );
+    return applyMigration(nextMigration, currentVersion).then(() => {
+        return applyMigrations(migrations, currentVersion);
+    });
 }
 
 module.exports.migrate = function (environment, databaseFile) {
@@ -139,6 +128,17 @@ module.exports.migrate = function (environment, databaseFile) {
             }
         }
     ).then((migrations) => {
-        return applyMigrations(migrations, currentVersion);
+        return dbManager.query('BEGIN TRANSACTION', []).then(() => {
+            return applyMigrations(migrations, currentVersion);
+        }).then(
+            () => {
+                return dbManager.query('COMMIT TRANSACTION', []);
+            },
+            (err) => {
+                console.log('COULD NOT APPLY ALL MIGRATIONS, ROLLING BACK');
+                exManager.logError(err);
+                return dbManager.query('ROLLBACK TRANSACTION', []);
+            }
+        );
     });
 };
