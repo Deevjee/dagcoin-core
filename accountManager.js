@@ -274,8 +274,10 @@ AccountManager.prototype.sendPaymentSequentially = function (toAddress, amount) 
 };
 
 AccountManager.prototype.checkBytesForAddress = function (address) {
-  return self.dbManager.query(
-    `SELECT asset, address, is_stable, SUM(amount) AS balance
+    const self = this;
+
+    return self.dbManager.query(
+        `SELECT asset, address, is_stable, SUM(amount) AS balance
     FROM outputs CROSS JOIN units USING(unit)
     WHERE is_spent=0 AND sequence='good' AND address = ?
     GROUP BY asset, address, is_stable
@@ -285,27 +287,27 @@ AccountManager.prototype.checkBytesForAddress = function (address) {
     UNION ALL
     SELECT NULL AS asset, address, 1 AS is_stable, SUM(amount) AS balance FROM headers_commission_outputs
     WHERE is_spent=0 AND address = ? GROUP BY address`,
-    [address, address, address]
-  ).then((rows) => {
-    const assocBalances = {};
+        [address, address, address]
+    ).then((rows) => {
+        const assocBalances = {};
 
-    assocBalances["base"] = {stable: 0, pending: 0, total: 0};
-    for (let i = 0; i < rows.length; i++) {
-        var row = rows[i];
-        var asset = row.asset || "base";
+        assocBalances["base"] = {stable: 0, pending: 0, total: 0};
+        for (let i = 0; i < rows.length; i++) {
+            var row = rows[i];
+            var asset = row.asset || "base";
 
-        if (!assocBalances[asset]) {
-            assocBalances[asset] = {stable: 0, pending: 0, total: 0};
-            console.log(`CREATED THE BALANCES ARRAY OF ADDRESS ${address} FOR ASSET ${asset}`);
+            if (!assocBalances[asset]) {
+                assocBalances[asset] = {stable: 0, pending: 0, total: 0};
+                console.log(`CREATED THE BALANCES ARRAY OF ADDRESS ${address} FOR ASSET ${asset}`);
+            }
+
+            console.log(`UPDATING BALANCE OF ${address} FOR ASSET ${asset}: ${row.is_stable ? 'stable' : 'pending'} ${row.balance}`);
+            assocBalances[asset][row.is_stable ? 'stable' : 'pending'] += row.balance;
+            assocBalances[asset]['total'] += row.balance;
         }
 
-        console.log(`UPDATING BALANCE OF ${address} FOR ASSET ${asset}: ${row.is_stable ? 'stable' : 'pending'} ${row.balance}`);
-        assocBalances[asset][row.is_stable ? 'stable' : 'pending'] += row.balance;
-        assocBalances[asset]['total'] += row.balance;
-    }
-
-    return Promise.resolve(assocBalances['base'].total);
-  });
+        return Promise.resolve(assocBalances['base'].total);
+    });
 };
 
 AccountManager.prototype.checkThereAreStableBytes = function (fromAddress) {
