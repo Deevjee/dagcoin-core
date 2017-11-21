@@ -100,12 +100,19 @@ module.exports.migrate = function (environment, databaseFile) {
         (data) => {
             console.log(`FILE migrations.json READ: ${data}`);
 
-            if (data == null || data === "") {
+            if (data == null) {
                 console.log('FILE migrations.json IS EMPTY. NOTHING TO MIGRATE');
                 return Promise.resolve([]);
             } else {
+                const jsonString = data.toString();
+
+                if (jsonString == null || jsonString === "" || jsonString.trim() === "") {
+                    console.log('FILE migrations.json IS EMPTY. NOTHING TO MIGRATE');
+                    return Promise.resolve([]);
+                }
+
                 try {
-                    return Promise.resolve(JSON.parse(data.toString()));
+                    return Promise.resolve(JSON.parse(jsonString.trim()));
                 } catch (e) {
                     console.log('FILE migrations.json CONTENT COULD NOT BE PARSED INTO JSON.');
                     return Promise.reject(e);
