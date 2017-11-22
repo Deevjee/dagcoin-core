@@ -60,3 +60,6 @@ typings/
 .idea/
 
 start.js
+
+# Transpiled files
+lib/
