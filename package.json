@@ -2,7 +2,7 @@
   "name": "dagcoin-core",
   "description": "Dagcoin Core",
   "author": "dagcoin",
-  "version": "0.4.9",
+  "version": "0.5.0",
   "keywords": [
     "dagcoin",
     "core",
@@ -22,8 +22,15 @@
     "raven": "^2.2.1"
   },
   "devDependencies": {
+    "babel-cli": "^6.26.0",
+    "babel-preset-env": "^1.6.1"
+  },
+  "scripts": {
+    "build": "babel src -d lib"
   },
   "browserify": {
-    "transform": ["babelify"]
+    "transform": [
+      "babelify"
+    ]
   }
 }
