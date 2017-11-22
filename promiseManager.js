@@ -239,7 +239,7 @@ exports.PromiseEnqueuer = function (name, execute, minimumDelay, repeatUntilSucc
                 }
             });
 
-            this.promiseQueue.push({arguments, resolver, promiseId: this.nextPromiseId()});
+            this.promiseQueue.push({promiseArguments: arguments, resolver, promiseId: this.nextPromiseId()});
 
             this.resolve();
 
@@ -274,7 +274,7 @@ exports.PromiseEnqueuer = function (name, execute, minimumDelay, repeatUntilSucc
                 return;
             }
 
-            const parameters = promiseDefinition.arguments;
+            const parameters = promiseDefinition.promiseArguments;
             const resolver = promiseDefinition.resolver;
 
             let promise = null;

@@ -2,7 +2,7 @@
   "name": "dagcoin-core",
   "description": "Dagcoin Core",
   "author": "dagcoin",
-  "version": "0.4.8",
+  "version": "0.4.9",
   "keywords": [
     "dagcoin",
     "core",
@@ -22,5 +22,8 @@
     "raven": "^2.2.1"
   },
   "devDependencies": {
+  },
+  "browserify": {
+    "transform": ["babelify"]
   }
 }
