@@ -67,7 +67,7 @@ function applyMigrations(migrations, currentVersion) {
         return Promise.resolve();
     }
 
-    const nextMigration = migrations.pop();
+    const nextMigration = migrations.shift();
 
     return applyMigration(nextMigration, currentVersion).then(() => {
         return applyMigrations(migrations, currentVersion);
