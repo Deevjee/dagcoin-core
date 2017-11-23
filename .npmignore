@@ -2,3 +2,7 @@
 node_modules
 start.js
 src/*
+conf.js
+.babelrc
+.gitignore
+.npmignore

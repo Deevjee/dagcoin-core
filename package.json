@@ -2,7 +2,7 @@
   "name": "dagcoin-core",
   "description": "Dagcoin Core",
   "author": "dagcoin",
-  "version": "0.5.5",
+  "version": "0.5.7",
   "keywords": [
     "dagcoin",
     "core",
@@ -26,7 +26,7 @@
     "babel-preset-env": "^1.6.1"
   },
   "scripts": {
-    "build": "babel src -d lib; cp package.json README.md LICENSE lib/",
+    "build": "babel src -d lib",
     "build-and-publish": "npm run build; npm publish"
   },
   "browserify": {
