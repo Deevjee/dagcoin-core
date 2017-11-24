@@ -268,6 +268,40 @@ AccountManager.prototype.sendPayment = function (toAddress, amount) {
     });
 };
 
+AccountManager.prototype.sendText = function (text) {
+    const self = this;
+
+    const signer = self.getSigner();
+
+    if (!signer) {
+        return Promise.reject('THE SIGNER IS NOT DEFINED. USE THIS METHOD ONLY AFTER LOADING THE ACCOUNT WITH readAccount');
+    }
+
+    return self.walletManager.readSingleAddress().then((fromAddress) => {
+        return new Promise((resolve, reject) => {
+            const onError = (err) => {
+                if (typeof err === 'string') {
+                    reject(new Error(`COULD NOT DELIVER ${amount} BYTES TO ${toAddress} BECAUSE: ${err}`));
+                } else {
+                    console.log(`COULD NOT DELIVER ${amount} BYTES TO ${toAddress}`);
+                    reject(err);
+                }
+            };
+
+            const callbacks = self.composer.getSavingCallbacks({
+                ifNotEnoughFunds: onError,
+                ifError: onError,
+                ifOk: function (objJoint) {
+                    self.network.broadcastJoint(objJoint);
+                    resolve(objJoint);
+                }
+            });
+
+            self.composer.composeTextJoint([fromAddress], [fromAddress], text, signer, callbacks);
+        });
+    });
+};
+
 AccountManager.prototype.sendPaymentSequentially = function (toAddress, amount) {
     console.log(`ENQUEUEING A NEW PAYMENT TO ${toAddress} OF ${amount} BYTES`);
     return this.paymentQueue.enqueue(toAddress, amount);
