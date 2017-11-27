@@ -1,5 +1,7 @@
 'use strict';
 
+let instances = {};
+
 // My module
 function Signer (xPrivateKey) {
     this.xPrivateKey = xPrivateKey;
@@ -142,7 +144,7 @@ Signer.prototype.readFullSigningPaths = function (conn, address, arrSigningDevic
         console.log(`SIGNING PATHS: ${JSON.stringify(assocSigningPaths)}`);
         handleSigningPaths(assocSigningPaths); // order of signing paths is not significant
     });
-}
+};
 
 Signer.prototype.findAddress = function (address, signing_path, callbacks, fallback_remote_device_address){
     const self = this;
@@ -211,3 +213,10 @@ Signer.prototype.verify = function(hash, b64_sig, b64_pub_key) {
 };
 
 module.exports = Signer;
+module.exports.getInstance = function (xPrivateKey) {
+    if (!instances[xPrivateKey]) {
+        instances[xPrivateKey] = new Signer(xPrivateKey);
+    }
+
+    return instances[xPrivateKey];
+};
