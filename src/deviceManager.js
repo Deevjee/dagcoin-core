@@ -221,6 +221,19 @@ DeviceManager.prototype.getCorrespondent = function (deviceAddress) {
     });
 };
 
+
+DeviceManager.prototype.getCorrespondentList = function () {
+    return this.dbManager.query(`SELECT device_address, hub, name, my_record_pref, peer_record_pref, latest_message_date 
+        FROM correspondent_devices CD
+        LEFT JOIN (SELECT correspondent_address, MAX(creation_date) AS latest_message_date 
+        FROM chat_messages GROUP BY correspondent_address) CM
+        ON CM.correspondent_address = CD.device_address
+        ORDER BY latest_message_date DESC, name ASC`)
+    .then((rows) => {
+        return Promise.resolve(rows);
+    });
+}
+
 DeviceManager.prototype.checkOrPairDevice = function(pairCode) {
     const matches = pairCode.match(/^([\w\/+]+)@([\w.:\/-]+)#([\w\/+-]+)$/);
     const pubkey = matches[1];
