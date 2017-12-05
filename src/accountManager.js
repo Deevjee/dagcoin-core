@@ -16,8 +16,7 @@ function AccountManager() {
     const DatabaseManager = require('./databaseManager');
     self.dbManager = DatabaseManager.getInstance();
 
-    const ConfManager = require('./confManager');
-    self.confManager = new ConfManager();
+    self.confManager = require('./confManager').getInstance();
 
     const KeyManager = require('./keyManager');
     self.keyManager = new KeyManager();
@@ -27,8 +26,6 @@ function AccountManager() {
 
     self.Signer = require('./signer');
     self.Mnemonic = require('bitcore-mnemonic');
-
-    self.passPhrase = self.conf.passPhrase;
 
     this.timedPromises = require('./promiseManager');
 
@@ -78,15 +75,17 @@ AccountManager.prototype.createAccount = function () {
 
         return self.keyManager.write(self.keys);
     }).then((keys) => {
+        return self.getPassPhrase();
+    }).then((passPhrase) => {
         console.log('KEYS CREATED');
-        self.xPrivKey = mnemonic.toHDPrivateKey(self.passPhrase);
+        self.xPrivKey = mnemonic.toHDPrivateKey(passPhrase);
         self.signer = new self.Signer(self.xPrivKey);
 
         console.log('SIGNER CREATED');
-        return self.walletManager.create(self.xPrivKey).then(() => {
-            console.log('RETURNING THE ACCOUNT');
-            return Promise.resolve(self);
-        });
+        return self.walletManager.create(self.xPrivKey);
+    }).then(() => {
+        console.log('RETURNING THE ACCOUNT');
+        return Promise.resolve(self);
     });
 };
 
@@ -99,7 +98,19 @@ AccountManager.prototype.getKeys = function () {
 };
 
 AccountManager.prototype.getPassPhrase = function () {
-    return this.passPhrase;
+    if (this.passPhrase != null) {
+        return Promise.resolve(this.passPhrase);
+    }
+
+    return this.confManager.get('PASS_PHRASE').then((passPhrase) => {
+        if (passPhrase == null) {
+            return Promise.reject('THE ENVIRONMENT VARIABLE PASS_PHRASE IS NOT SET');
+        }
+
+        this.passPhrase = passPhrase;
+
+        return Promise.resolve(passPhrase);
+    });
 };
 
 AccountManager.prototype.getPrivateKey = function () {
@@ -107,7 +118,7 @@ AccountManager.prototype.getPrivateKey = function () {
 };
 
 AccountManager.prototype.getPairingCode = function () {
-    return this.pairigCode;
+    return this.pairingCode;
 };
 
 AccountManager.prototype.readAccount = function () {
@@ -125,7 +136,15 @@ AccountManager.prototype.readAccount = function () {
 
     console.log('-----------------------');
 
-    return self.keyManager.read().then(
+    return self.confManager.get('PASS_PHRASE').then((passPhrase) => {
+        if (passPhrase == null) {
+            return Promise.reject(new Error('COULD NOT FIND PASS_PHRASE. IT SHOULD BE SET AS AN ENVIRONMENT VARIABLE'));
+        }
+
+        self.passPhrase = passPhrase;
+
+        return self.keyManager.read();
+    }).then(
         (data) => {
             self.keys = JSON.parse(data);
 
@@ -144,6 +163,7 @@ AccountManager.prototype.readAccount = function () {
             });
         },
         () => {
+            //TODO: handle the error. Right now it is assumed the problem is the wallet not existing.
             return self.createAccount();
         }
     ).then((account) => {
@@ -202,9 +222,11 @@ AccountManager.prototype.readAccount = function () {
         console.log(`====== my device address: ${self.myDeviceAddress}`);
         console.log(`====== my device pubkey: ${self.myDevicePubkey}`);
 
-        if (self.conf.permanent_pairing_secret) {
-            self.pairigCode = `${self.myDevicePubkey}@${self.conf.hub}#${self.conf.permanent_pairing_secret}`;
-            console.log(`====== my pairing code: ${self.pairigCode}`);
+        return self.confManager.get('PERMANENT_PAIRING_SECRET');
+    }).then((permanent_pairing_secret) => {
+        if (permanent_pairing_secret) {
+            self.pairingCode = `${self.myDevicePubkey}@${self.conf.hub}#${permanent_pairing_secret}`;
+            console.log(`====== my pairing code: ${self.pairingCode}`);
         }
 
         if (self.conf.bLight) {
@@ -327,8 +349,8 @@ AccountManager.prototype.checkBytesForAddress = function (address) {
 
         assocBalances["base"] = {stable: 0, pending: 0, total: 0};
         for (let i = 0; i < rows.length; i++) {
-            var row = rows[i];
-            var asset = row.asset || "base";
+            const row = rows[i];
+            const asset = row.asset || "base";
 
             if (!assocBalances[asset]) {
                 assocBalances[asset] = {stable: 0, pending: 0, total: 0};

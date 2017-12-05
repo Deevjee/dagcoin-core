@@ -86,36 +86,34 @@ ConfManager.prototype.get = function (key) {
 
     console.log(`CONFIGURATION NOT FOUND INTO THE conf.js FOR ${key}. LOOKING INTO ALTERNATIVE SOURCES`);
 
-    return self.searchSources(key, 0).then((value) => {
-        if (value != null) {
-            return Promise.resolve(value);
+    return self.searchSources(key, 0);
+};
+
+ConfManager.prototype.getMultiple = function (keys, values) {
+    const self = this;
+
+    if (typeof keys === 'string') {
+        return self.get(keys);
+    }
+
+    if (!Array.isArray(keys)) {
+        return Promise.reject(new Error(`PARAMETER keys IS NOT A STRING NOR AN ARRAY: ${typeof keys} ${JSON.stringify(keys)}`));
+    }
+
+    if (keys == null || keys.length === 0) {
+        return Promise.resolve(values);
+    }
+
+    const nextKey = keys.shift();
+
+    return self.get(nextKey).then((value) => {
+        if (values == null) {
+            values = {};
         }
 
-        console.log(`CONFIGURATION NOT FOUND INTO THE ALTERNATIVE SOURCES FOR ${key}. LOOKING INTO ANGULAR`);
+        values[nextKey] = value;
 
-        return new Promise((resolve, reject) => {
-            if (self.osManager.isNode()) {
-                console.log('ANGULAR IS NOT DEFINED. MAYBE YOU CALLED IT TOO EARLY?');
-                return Promise.resolve(null);
-            }
-
-            if (angular == null) {
-                console.log('RUNNIG: UNDER NODE: ANGULAR HERE IS NOT ALLOWED AS CONFIGURATION SOURCE');
-                return Promise.resolve(null);
-            }
-
-            console.log(`LOOKING INTO THE ANGULAR CONFIGURATION FOR ${key}`);
-            try {
-                angular.injector(['config']).invoke(function(ENV) {
-                    console.log(`CONFIGURATION VALUE FOR ${key} FOUND: ${ENV[key]}`);
-                    resolve(ENV[key]);
-                });
-            } catch (e) {
-                console.log(`CONFIGURATION VALUE FOR ${key} COULD NOT BE RETRIEVED`);
-                self.exManager.logError(e);
-                reject(e);
-            }
-        });
+        return self.getMultiple(keys, values);
     });
 };
 
