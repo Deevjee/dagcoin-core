@@ -225,8 +225,9 @@ DeviceManager.prototype.getCorrespondentList = function () {
         LEFT JOIN (SELECT correspondent_address, MAX(creation_date) AS latest_message_date 
         FROM chat_messages GROUP BY correspondent_address) CM
         ON CM.correspondent_address = CD.device_address
-        ORDER BY latest_message_date DESC, name ASC`)
-    .then((rows) => {
+        ORDER BY latest_message_date DESC, name ASC`,
+        []
+    ).then((rows) => {
         return Promise.resolve(rows);
     });
 };
