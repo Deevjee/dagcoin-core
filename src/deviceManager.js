@@ -5,10 +5,7 @@ let instance = null;
 function DeviceManager() {
     this.device = require('byteballcore/device');
     this.conf = require('byteballcore/conf');
-    const DatabaseManager = require('./databaseManager');
-    this.dbManager = new DatabaseManager();
-    this.DeviceManagerAddresses = [];
-    this.DeviceManagerAvailabilityCheckingPromise = null;
+    this.dbManager = require('./databaseManager').getInstance();
     this.timedPromises = require('./promiseManager');
 
     this.messageCounter = 0;
@@ -223,7 +220,7 @@ DeviceManager.prototype.getCorrespondent = function (deviceAddress) {
 
 
 DeviceManager.prototype.getCorrespondentList = function () {
-    return this.dbManager.query(`SELECT device_address, hub, name, my_record_pref, peer_record_pref, latest_message_date 
+    return this.dbManager.query(`SELECT device_address, hub, name, my_record_pref, peer_record_pref, latest_message_date
         FROM correspondent_devices CD
         LEFT JOIN (SELECT correspondent_address, MAX(creation_date) AS latest_message_date 
         FROM chat_messages GROUP BY correspondent_address) CM
@@ -232,7 +229,7 @@ DeviceManager.prototype.getCorrespondentList = function () {
     .then((rows) => {
         return Promise.resolve(rows);
     });
-}
+};
 
 DeviceManager.prototype.checkOrPairDevice = function(pairCode) {
     const matches = pairCode.match(/^([\w\/+]+)@([\w.:\/-]+)#([\w\/+-]+)$/);

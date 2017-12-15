@@ -432,7 +432,7 @@ AccountManager.prototype.emptySharedAddress = function (toBeEmptiedAddress) {
     return self.walletManager.readSingleAddress().then((toAddress) => {
         return new Promise((resolve, reject) => {
             const onError = (err) => {
-                reject(`COULD NOT DELIVER ${amount} BYTES TO ${toAddress} BECAUSE: ${err}`);
+                reject(`COULD NOT DELIVER BYTES TO ${toAddress} BECAUSE: ${err}`);
             };
 
             const callbacks = self.composer.getSavingCallbacks({
@@ -455,6 +455,86 @@ AccountManager.prototype.emptySharedAddress = function (toBeEmptiedAddress) {
                 outputs: arrOutputs,
                 signer: signer,
                 callbacks: callbacks
+            });
+        });
+    });
+};
+
+AccountManager.prototype.transferFees = function (destination) {
+    const self = this;
+
+    const signer = self.getSigner();
+
+    if (!signer) {
+        return Promise.reject('THE SIGNER IS NOT DEFINED. USE THIS METHOD ONLY AFTER LOADING THE ACCOUNT WITH readAccount');
+    }
+
+    return self.walletManager.readSingleAddress().then((fromAddress) => {
+        return new Promise((resolve, reject) => {
+            const onError = (err) => {
+                reject(`COULD NOT DELIVER DAGCOINS TO ${destination} BECAUSE: ${err}`);
+            };
+
+            const callbacks = self.composer.getSavingCallbacks({
+                ifNotEnoughFunds: onError,
+                ifError: onError,
+                ifOk: function (objJoint) {
+                    self.network.broadcastJoint(objJoint);
+                    resolve(objJoint);
+                }
+            });
+
+            const divisibleAsset = require('byteballcore/divisible_asset.js');
+
+            divisibleAsset.composeAndSaveDivisibleAssetPaymentJoint({
+                asset: self.conf.dagcoinAsset,
+                paying_addresses: [fromAddress],
+                fee_paying_addresses: [fromAddress],
+                change_address: fromAddress,
+                to_address: destination,
+                send_all: true,
+                signer,
+                callbacks
+            });
+        });
+    });
+};
+
+AccountManager.prototype.payDagcoins = function (destination, amount) {
+    const self = this;
+
+    const signer = self.getSigner();
+
+    if (!signer) {
+        return Promise.reject('THE SIGNER IS NOT DEFINED. USE THIS METHOD ONLY AFTER LOADING THE ACCOUNT WITH readAccount');
+    }
+
+    return self.walletManager.readSingleAddress().then((fromAddress) => {
+        return new Promise((resolve, reject) => {
+            const onError = (err) => {
+                reject(`COULD NOT DELIVER DAGCOINS TO ${destination} BECAUSE: ${err}`);
+            };
+
+            const callbacks = self.composer.getSavingCallbacks({
+                ifNotEnoughFunds: onError,
+                ifError: onError,
+                ifOk: function (objJoint) {
+                    self.network.broadcastJoint(objJoint);
+                    resolve(objJoint);
+                }
+            });
+
+            const divisibleAsset = require('byteballcore/divisible_asset.js');
+
+            divisibleAsset.composeAndSaveDivisibleAssetPaymentJoint({
+                asset: self.conf.dagcoinAsset,
+                paying_addresses: [fromAddress],
+                fee_paying_addresses: [fromAddress],
+                change_address: fromAddress,
+                to_address: destination,
+                amount,
+                signer,
+                callbacks
             });
         });
     });

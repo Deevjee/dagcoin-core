@@ -1,7 +1,6 @@
 'use strict';
 
 let instance = null;
-const Raven = require('raven');
 
 // My module
 function DatabaseManager() {
@@ -23,6 +22,7 @@ function DatabaseManager() {
                     self.db.query(query, parameters, resolve);
                 } catch (e) {
                     console.error(e, e.stack);
+                    const Raven = require('raven');
                     Raven.captureException(e);
                     reject(`QUERY ${query} WITH PARAMETER ${JSON.stringify(parameters)} FAILED: ${e.message}`);
                 }

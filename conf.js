@@ -18,3 +18,4 @@ exports.MAIN_ADDRESS_FUNDS_INSPECTION_PERIOD = 30 * 1000;
 exports.KEYS_FILENAME = "keys.json";
 
 exports.DATABASE_MIGRATION_TOOL = "native-queries"; // CAN BE native-queries OR db-migrate
+exports.dagcoinAsset = 'B9dw3C3gMC+AODL/XqWjFh9jFe31jS08yf2C3zl8XGg=';
