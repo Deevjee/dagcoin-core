@@ -540,6 +540,86 @@ AccountManager.prototype.payDagcoins = function (destination, amount) {
     });
 };
 
+AccountManager.prototype.sendMultiPayment = function (outputs) {
+    if (outputs == null || outputs.length === 0) {
+        return Promise.reject('NO OUTPUTS SPECIFIED');
+    }
+
+    const self = this;
+
+    const signer = self.getSigner();
+
+    return self.walletManager.readSingleAddress().then((fromAddress) => {
+        return new Promise((resolve, reject) => {
+            const onError = (err) => {
+                reject(`COULD NOT DELIVER ${JSON.stringify(outputs)} BECAUSE: ${err}`);
+            };
+
+            const callbacks = self.composer.getSavingCallbacks({
+                ifNotEnoughFunds: onError,
+                ifError: onError,
+                ifOk: function (objJoint) {
+                    self.network.broadcastJoint(objJoint);
+                    resolve(objJoint);
+                }
+            });
+
+            // i.e.: "LS3PUAGJ2CEYBKWPODVV72D3IWWBXNXO"
+            // const payee_address = toAddress;
+
+            // Example of output array
+            /*const arrOutputs = [
+                {address: fromAddress, amount: 0},      // the change
+                {address: payee_address, amount: amount}  // the receiver
+            ];*/
+
+            //Change address
+            outputs.push({address: fromAddress, amount: 0});
+
+            self.composer.composePaymentJoint([fromAddress], outputs, signer, callbacks);
+        });
+    });
+};
+
+AccountManager.prototype.sendMultiAssetPayment = function (outputs) {
+    if (outputs == null || outputs.length === 0) {
+        return Promise.reject('NO OUTPUTS SPECIFIED');
+    }
+
+    const self = this;
+
+    const signer = self.getSigner();
+
+    return self.walletManager.readSingleAddress().then((fromAddress) => {
+        return new Promise((resolve, reject) => {
+            const onError = (err) => {
+                reject(`COULD NOT DELIVER ASSET ${JSON.stringify(outputs)} BECAUSE: ${err}`);
+            };
+
+            const callbacks = {
+                ifNotEnoughFunds: onError,
+                ifError: onError,
+                ifOk: function (objJoint) {
+                    self.network.broadcastJoint(objJoint);
+                    resolve(objJoint);
+                }
+            };
+
+            const divisibleAsset = require('byteballcore/divisible_asset.js');
+
+            divisibleAsset.composeAndSaveDivisibleAssetPaymentJoint({
+                asset: self.conf.dagcoinAsset,
+                paying_addresses: [fromAddress],
+                fee_paying_addresses: [fromAddress],
+                change_address: fromAddress,
+                asset_outputs: outputs,
+                signer,
+                callbacks
+            });
+        });
+    });
+};
+
 module.exports = AccountManager;
 module.exports.getInstance = function () {
     if (!instance) {
